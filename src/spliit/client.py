@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 import requests
 
-from .utils import format_expense_payload, format_expense_with_shares_payload
+from .utils import format_expense_payload
 
 @dataclass
 class Spliit:
@@ -66,15 +66,57 @@ class Spliit:
         response.raise_for_status()
         return response.json()[0]["result"]["data"]["json"]["expenses"]
     
+    def get_expense(self, expense_id: str) -> Dict:
+        """
+        Get details of a specific expense.
+        
+        Args:
+            expense_id: The ID of the expense to retrieve
+            
+        Returns:
+            Dict containing the expense details
+        """
+        params_input = {
+            "0": {
+                "json": {
+                    "groupId": self.group_id,
+                    "expenseId": expense_id
+                }
+            }
+        }
+        
+        params = {
+            "batch": "1",
+            "input": json.dumps(params_input)
+        }
+        
+        response = requests.get(
+            f"{self.base_url}/groups.expenses.get",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()[0]["result"]["data"]["json"]["expense"]
+    
     def add_expense(
         self,
         title: str,
         paid_by: str,
         paid_for: List[Tuple[str, int]],
         amount: int = 1300,
-        category: int = 0
+        category: int = 0,
+        notes: str = ""
     ) -> str:
-        """Add a new expense to the group with even split."""
+        """
+        Add a new expense to the group with even split.
+        
+        Args:
+            title: Title of the expense
+            paid_by: ID of the participant who paid
+            paid_for: List of tuples containing (participant_id, shares)
+            amount: Amount in cents
+            category: Expense category ID
+            notes: Optional notes for the expense
+        """
         params = {"batch": "1"}
         
         json_data = format_expense_payload(
@@ -83,7 +125,8 @@ class Spliit:
             paid_by,
             paid_for,
             amount,
-            category
+            category,
+            notes
         )
         
         response = requests.post(
@@ -93,6 +136,7 @@ class Spliit:
         )
         response.raise_for_status()
         return response.content.decode()
+
 
     def remove_expense(self, expense_id: str) -> Dict:
         """
