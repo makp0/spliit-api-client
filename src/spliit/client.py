@@ -1,17 +1,73 @@
 import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union, overload
+from urllib.parse import urljoin
 
 import requests
+import uuid
 
-from .utils import format_expense_payload, SplitMode
+from .utils import format_expense_payload, SplitMode, get_current_timestamp
+
+OFFICIAL_INSTANCE = "https://spliit.app"
 
 @dataclass
 class Spliit:
     """Client for interacting with the Spliit API."""
     
     group_id: str
-    base_url: str = "https://spliit.app/api/trpc"
+    server_url: str = OFFICIAL_INSTANCE
+    
+    @property
+    def base_url(self) -> str:
+        """Get the base URL for API requests."""
+        return urljoin(self.server_url, "/api/trpc")
+    
+    @classmethod
+    def create_group(cls, name: str, currency: str = "$", server_url: str = OFFICIAL_INSTANCE, participants: List[Dict[str, str]] = None) -> "Spliit":
+        """Create a new group and return a client instance for it."""
+        if participants is None:
+            participants = [{"name": "You"}]
+            
+        # Add UUIDs to participants
+        for participant in participants:
+            participant["id"] = str(uuid.uuid4())
+            
+        json_data = {
+            "0": {
+                "json": {
+                    "groupFormValues": {
+                        "name": name,
+                        "currency": currency,
+                        "information": "",
+                        "participants": participants
+                    }
+                }
+            }
+        }
+        
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        url = f"{urljoin(server_url, '/api/trpc/groups.create')}"
+        print("\nDebug: Request details:")
+        print(f"URL: {url}")
+        print(f"Headers: {headers}")
+        print(f"JSON data: {json_data}")
+        
+        response = requests.post(
+            url,
+            json=json_data,
+            headers=headers,
+            params={"batch": "1"}
+        )
+        
+        print(f"Debug: Response status: {response.status_code}")
+        print(f"Debug: Response content: {response.content.decode()}")
+        
+        response.raise_for_status()
+        group_id = response.json()[0]["result"]["data"]["json"]["groupId"]
+        return cls(group_id=group_id, server_url=server_url)
     
     def get_group(self) -> Dict:
         """Get group details."""
@@ -97,95 +153,54 @@ class Spliit:
         response.raise_for_status()
         return response.json()[0]["result"]["data"]["json"]["expense"]
     
-    @overload
     def add_expense(
         self,
         title: str,
-        paid_by: str,
-        paid_for: List[str],
         amount: int,
-        category: int = 0,
-        notes: str = ""
-    ) -> str:
-        """
-        Add a new expense to the group with even split.
-        
-        Args:
-            title: Title of the expense
-            paid_by: ID of the participant who paid
-            paid_for: List of participant IDs to split evenly between
-            amount: Amount in cents (e.g., 1350 for $13.50)
-            category: Expense category ID
-            notes: Optional notes for the expense
-        """
-        ...
-
-    @overload
-    def add_expense(
-        self,
-        title: str,
         paid_by: str,
-        paid_for: List[Tuple[str, int]],
-        amount: int,
-        category: int = 0,
+        paid_for: List[Union[str, Tuple[str, Union[int, float]]]],
+        split_mode: SplitMode = SplitMode.EVENLY,
         notes: str = "",
-        split_mode: SplitMode = SplitMode.EVENLY
+        category: int = 0
     ) -> str:
         """
         Add a new expense to the group.
         
         Args:
             title: Title of the expense
-            paid_by: ID of the participant who paid
-            paid_for: List of tuples containing (participant_id, shares/percentage/amount)
             amount: Amount in cents (e.g., 1350 for $13.50)
-            category: Expense category ID
-            notes: Optional notes for the expense
-            split_mode: How to split the expense (EVENLY, BY_SHARES, BY_PERCENTAGE, BY_AMOUNT)
-        """
-        ...
-
-    def add_expense(
-        self,
-        title: str,
-        paid_by: str,
-        paid_for: Union[List[str], List[Tuple[str, int]]],
-        amount: int,
-        category: int = 0,
-        notes: str = "",
-        split_mode: SplitMode = SplitMode.EVENLY
-    ) -> str:
-        """
-        Add a new expense to the group.
-        
-        Args:
-            title: Title of the expense
             paid_by: ID of the participant who paid
             paid_for: Either a list of participant IDs for even split,
                      or a list of (participant_id, shares) tuples for custom split
-            amount: Amount in cents (e.g., 1350 for $13.50)
-            category: Expense category ID
-            notes: Optional notes for the expense
             split_mode: How to split the expense (EVENLY, BY_SHARES, BY_PERCENTAGE, BY_AMOUNT)
+            notes: Optional notes for the expense
+            category: Expense category ID
         """
         params = {"batch": "1"}
         
         json_data = format_expense_payload(
             self.group_id,
             title,
+            amount,
             paid_by,
             paid_for,
-            amount,
-            category,
+            split_mode,
             notes,
-            split_mode
+            category
         )
+        
+        print("\nDebug: Request payload:")
+        print(json.dumps(json_data, indent=2))
         
         response = requests.post(
             f"{self.base_url}/groups.expenses.create",
             params=params,
             json=json_data
         )
+        
+        print("\nDebug: Response status:", response.status_code)
+        print("Debug: Response content:", response.content.decode())
+        
         response.raise_for_status()
         return response.content.decode()
 
