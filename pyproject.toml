@@ -3,29 +3,64 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "spliit"
-version = "0.1.0"
-authors = [
-  { name="Max Pol", email="your.email@example.com" },
-]
-description = "Python client for Spliit expense sharing app"
+name = "spliit-api-client"
+version = "0.1.2"
+description = "Python client for the Spliit expense sharing application API. Fork of guysoft/SpliitApi."
 readme = "README.md"
-requires-python = ">=3.9"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+    { name = "makp0", email = "me@polupan.dev" }
 ]
+maintainers = [
+    { name = "makp0", email = "me@polupan.dev" }
+]
+keywords = ["spliit", "api", "client", "expenses", "sharing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
 dependencies = [
-    "requests>=2.25.1",
+    "requests>=2.25.0",
 ]
 
 [project.optional-dependencies]
-test = [
+dev = [
     "pytest>=7.0.0",
+    "black>=22.0.0",
+    "mypy>=1.0.0",
+]
+test = [
+    "pytest>=7.0.0"
 ]
 
+[project.urls]
+Homepage = "https://github.com/maxpol/spliit-api-client"
+Repository = "https://github.com/maxpol/spliit-api-client.git"
+Issues = "https://github.com/maxpol/spliit-api-client/issues"
+"Original Repository" = "https://github.com/guysoft/SpliitApi"
+
 [tool.pytest.ini_options]
-pythonpath = [
-  "src"
-]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spliit"]

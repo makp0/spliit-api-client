@@ -20,17 +20,13 @@ def verify_expense(expense_details, test_case):
     assert expense_details["title"] == test_case["title"]
     assert expense_details["amount"] == test_case["amount"]
     assert expense_details["paidBy"]["id"] == test_case["paid_by"]
+    assert expense_details["notes"] == test_case["notes"]
     
     # Get shares for each participant
     shares = {
         paid["participantId"]: int(paid["shares"])  # API returns shares as strings
         for paid in expense_details["paidFor"]
     }
-    
-    # For even splits, verify all shares are 100
-    if test_case["split_mode"] == SplitMode.EVENLY:
-        for share in shares.values():
-            assert share == 100
     
     for participant_id, expected_data in test_case["expected_shares"].items():
         assert shares[participant_id] == expected_data["shares"]

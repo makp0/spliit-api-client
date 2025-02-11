@@ -171,3 +171,5 @@ cython_debug/
 .pypirc
 
 spliit/
+
+.DS_Store
