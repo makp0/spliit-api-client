@@ -19,11 +19,8 @@ jobs:
         pip install -e ".[test]"
     - name: Run integration tests
       run: |
-        cd tests/docker
-        docker compose up -d --wait
-        export SPLIIT_SERVER_URL="http://localhost:3000"
-        pytest ../test_integration.py -v
-        docker compose down -v
+        cd tests
+        bash run_integration_tests.sh
 
   deploy:
     needs: test
