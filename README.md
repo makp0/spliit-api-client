@@ -23,6 +23,7 @@ This project is a fork of [guysoft/SpliitApi](https://github.com/guysoft/SpliitA
 ## Installation
 
 ```bash
+! not functional. too lazy to figure what's wrong with this all eggs, hatchings, pypi and stuff
 pip install spliit-api-client
 ```
 
