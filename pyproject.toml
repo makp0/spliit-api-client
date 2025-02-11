@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spliit-api-client"
-version = "0.1.2"
+version = "0.1.5"
 description = "Python client for the Spliit expense sharing application API. Fork of guysoft/SpliitApi."
 readme = "README.md"
 requires-python = ">=3.8"

@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+"""
+Implementation of the Spliit API client.
+"""
+
 import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union, Any
@@ -5,6 +10,7 @@ from urllib.parse import urljoin
 from enum import Enum
 import requests
 import uuid
+from datetime import datetime, timezone, UTC
 
 class SplitMode(str, Enum):
     """Split modes available in Spliit."""
@@ -15,6 +21,66 @@ class SplitMode(str, Enum):
 
 OFFICIAL_INSTANCE = "https://spliit.app"
 
+CATEGORIES = {
+    "Uncategorized": {
+        "General": 0,
+        "Payment": 1
+    },
+    "Entertainment": {
+        "Entertainment": 2,
+        "Games": 3,
+        "Movies": 4,
+        "Music": 5,
+        "Sports": 6
+    },
+    "Food and Drink": {
+        "Food and Drink": 7,
+        "Dining Out": 8,
+        "Groceries": 9,
+        "Liquor": 10
+    },
+    "Home": {
+        "Home": 11,
+        "Electronics": 12,
+        "Furniture": 13,
+        "Household Supplies": 14,
+        "Maintenance": 15,
+        "Mortgage": 16,
+        "Pets": 17,
+        "Rent": 18,
+        "Services": 19
+    },
+    "Life": {
+        "Childcare": 20,
+        "Clothing": 21,
+        "Education": 22,
+        "Gifts": 23,
+        "Insurance": 24,
+        "Medical Expenses": 25,
+        "Taxes": 26
+    },
+    "Transportation": {
+        "Transportation": 27,
+        "Bicycle": 28,
+        "Bus/Train": 29,
+        "Car": 30,
+        "Gas/Fuel": 31,
+        "Hotel": 32,
+        "Parking": 33,
+        "Plane": 34,
+        "Taxi": 35
+    },
+    "Utilities": {
+        "Utilities": 36,
+        "Cleaning": 37,
+        "Electricity": 38,
+        "Heat/Gas": 39,
+        "Trash": 40,
+        "TV/Phone/Internet": 41,
+        "Water": 42
+    }
+}
+
 def format_expense_payload(
     group_id: str,
     title: str,
@@ -22,7 +88,7 @@ def format_expense_payload(
     paid_by: str,
     paid_for: List[Tuple[str, int]],
     split_mode: SplitMode,
-    expense_date: str,
+    expense_date: datetime,
     notes: str = "",
     category: int = 0,
 ) -> Dict[str, Any]:
@@ -36,9 +102,12 @@ def format_expense_payload(
             "shares": shares
         })
 
+    # Format the expense date
+    formatted_date = expense_date.strftime('%Y-%m-%dT%H:%M:%S.') + f"{expense_date.microsecond // 10000:03d}Z"
+
     # Create the expense form values
     expense_form_values = {
-        "expenseDate": expense_date,
+        "expenseDate": formatted_date,
         "title": title,
         "category": category,
         "amount": amount,
@@ -65,6 +134,11 @@ def format_expense_payload(
             }
         }
     }
+
+def get_current_timestamp() -> str:
+    """Get current timestamp in Spliit format."""
+    now = datetime.now(UTC)
+    return now.strftime('%Y-%m-%dT%H:%M:%S.') + f"{now.microsecond // 10000:03d}Z"
 
 @dataclass
 class Spliit:
@@ -216,7 +290,7 @@ class Spliit:
         paid_by: str,
         paid_for: List[Tuple[str, int]],
         split_mode: SplitMode = SplitMode.EVENLY,
-        expense_date: str = "2025-02-11T14:10:49.423Z",
+        expense_date: Optional[datetime] = None,
         notes: str = "",
         category: int = 0
     ) -> str:
@@ -229,10 +303,13 @@ class Spliit:
             paid_by: ID of the participant who paid
             paid_for: List of (participant_id, shares) tuples
             split_mode: How to split the expense (EVENLY, BY_SHARES, BY_PERCENTAGE, BY_AMOUNT)
-            expense_date: ISO format date string (e.g., "2025-02-11T14:10:49.423Z")
+            expense_date: Optional datetime for the expense (defaults to current UTC time)
             notes: Optional notes for the expense
             category: Expense category ID
         """
+        if expense_date is None:
+            expense_date = datetime.now(timezone.utc)
+            
         params = {"batch": "1"}
         
         json_data = format_expense_payload(

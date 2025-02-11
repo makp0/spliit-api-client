@@ -5,7 +5,7 @@ import pytest
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 # Add the src directory to Python path
 sys.path.append(str(Path(__file__).parent.parent / "src"))
@@ -23,10 +23,15 @@ def verify_expense(expense_details, test_case):
     assert expense_details["paidBy"]["id"] == test_case["paid_by"]
     assert expense_details["notes"] == test_case["notes"]
     
-    # API normalizes dates to midnight UTC, so we only compare the date part
-    expense_date = datetime.strptime(expense_details["expenseDate"], "%Y-%m-%dT%H:%M:%S.%fZ").date()
-    test_date = datetime.strptime(test_case["expense_date"], "%Y-%m-%dT%H:%M:%S.%fZ").date()
-    assert expense_date == test_date
+    # Parse expense date from API response
+    expense_date = datetime.strptime(
+        expense_details["expenseDate"], 
+        "%Y-%m-%dT%H:%M:%S.%fZ"
+    ).replace(tzinfo=timezone.utc)
+    
+    # Compare dates in UTC
+    test_date = test_case["expense_date"].astimezone(timezone.utc)
+    assert expense_date.date() == test_date.date()
     
     # Get shares for each participant
     shares = {
@@ -77,6 +82,19 @@ def test_expense_lifecycle():
     participant1_id = participants[participant_names[0]]
     participant2_id = participants[participant_names[1]]
     
+    # Create test dates with timezone info
+    base_date = datetime(2025, 2, 11, tzinfo=timezone.utc)
+    test_dates = [
+        base_date.replace(hour=14, minute=10, second=49, microsecond=423000),
+        base_date.replace(hour=14, minute=11, second=50, microsecond=735000),
+        base_date.replace(hour=14, minute=12, second=29, microsecond=246000),
+        base_date.replace(hour=14, minute=13, second=15, microsecond=789000)
+    ]
+    
+    # Also test with a non-UTC timezone
+    local_tz = timezone(timedelta(hours=2))  # UTC+2
+    test_dates.append(datetime(2025, 2, 11, 16, 15, 0, tzinfo=local_tz))  # Will be converted to 14:15 UTC
+    
     test_cases = [
         {
             "title": f"Even Split Test {time.time()}",
@@ -84,7 +102,7 @@ def test_expense_lifecycle():
             "paid_by": payer_id,
             "paid_for": [(participant1_id, 100), (participant2_id, 100)],  # Each gets 100 shares
             "split_mode": SplitMode.EVENLY,
-            "expense_date": "2025-02-11T14:10:49.423Z",
+            "expense_date": test_dates[0],
             "notes": "Testing even split between two participants",
             "expected_shares": {
                 participant1_id: {"shares": 100},
@@ -97,7 +115,7 @@ def test_expense_lifecycle():
             "paid_by": payer_id,
             "paid_for": [(participant1_id, 7000), (participant2_id, 3000)],  # 70% and 30%
             "split_mode": SplitMode.BY_PERCENTAGE,
-            "expense_date": "2025-02-11T14:11:50.735Z",
+            "expense_date": test_dates[1],
             "notes": "Testing 70-30 percentage split",
             "expected_shares": {
                 participant1_id: {"shares": 7000},  # 70%
@@ -110,7 +128,7 @@ def test_expense_lifecycle():
             "paid_by": payer_id,
             "paid_for": [(participant1_id, 100), (participant2_id, 300)],  # $1.00, $3.00
             "split_mode": SplitMode.BY_AMOUNT,
-            "expense_date": "2025-02-11T14:12:29.246Z",
+            "expense_date": test_dates[2],
             "notes": "Testing exact amount split",
             "expected_shares": {
                 participant1_id: {"shares": 100},  # $1.00
@@ -123,11 +141,24 @@ def test_expense_lifecycle():
             "paid_by": payer_id,
             "paid_for": [(participant1_id, 100), (participant2_id, 300)],  # 1:3 ratio
             "split_mode": SplitMode.BY_SHARES,
-            "expense_date": "2025-02-11T14:13:15.789Z",
+            "expense_date": test_dates[3],
             "notes": "Testing share ratio split",
             "expected_shares": {
                 participant1_id: {"shares": 100},  # 1 share
                 participant2_id: {"shares": 300}   # 3 shares
+            }
+        },
+        {
+            "title": f"Local Timezone Test {time.time()}",
+            "amount": 9000,  # $90.00
+            "paid_by": payer_id,
+            "paid_for": [(participant1_id, 100), (participant2_id, 100)],  # Even split
+            "split_mode": SplitMode.EVENLY,
+            "expense_date": test_dates[4],  # Using local timezone
+            "notes": "Testing expense with non-UTC timezone",
+            "expected_shares": {
+                participant1_id: {"shares": 100},
+                participant2_id: {"shares": 100}
             }
         }
     ]
@@ -136,6 +167,7 @@ def test_expense_lifecycle():
         print(f"\nTesting {test_case['split_mode'].value} split mode:")
         print(f"- Title: {test_case['title']}")
         print(f"- Amount: ${test_case['amount']/100:.2f}")
+        print(f"- Date: {test_case['expense_date'].isoformat()}")
         
         # Add the expense
         new_expense_response = client.add_expense(

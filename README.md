@@ -105,30 +105,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install development dependencies
 pip install -e ".[dev]"
 
-# Run unit tests
-pytest tests/test_client.py -v
-
-# Run integration tests (requires Docker)
-./tests/run_integration_tests.sh
+# Run tests
+pytest tests/
 ```
-
-### Integration Tests
-
-The integration tests use Docker to spin up a local instance of Spliit and test against it. This ensures that the client works correctly with the actual API. The tests cover:
-
-- Group creation
-- Different split modes (even, percentage, amount, shares)
-- Timezone handling
-- Full expense lifecycle (create, read, delete)
-
-### CI/CD Pipeline
-
-The project uses GitHub Actions for continuous integration and deployment:
-
-1. On each release:
-   - Runs integration tests against a dockerized Spliit instance
-   - Builds the package
-   - Publishes to PyPI if all tests pass
 
 ## License
 
