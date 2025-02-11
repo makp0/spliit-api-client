@@ -1,14 +1,70 @@
 import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union, overload
+from typing import Dict, List, Optional, Tuple, Union, Any
 from urllib.parse import urljoin
-
+from enum import Enum
 import requests
 import uuid
 
-from .utils import format_expense_payload, SplitMode, get_current_timestamp
+class SplitMode(str, Enum):
+    """Split modes available in Spliit."""
+    EVENLY = "EVENLY"
+    BY_SHARES = "BY_SHARES"
+    BY_PERCENTAGE = "BY_PERCENTAGE"
+    BY_AMOUNT = "BY_AMOUNT"
 
 OFFICIAL_INSTANCE = "https://spliit.app"
+
+def format_expense_payload(
+    group_id: str,
+    title: str,
+    amount: int,
+    paid_by: str,
+    paid_for: List[Tuple[str, int]],
+    split_mode: SplitMode,
+    expense_date: str,
+    notes: str = "",
+    category: int = 0,
+) -> Dict[str, Any]:
+    """Format the expense payload according to the API requirements."""
+    # Convert paid_for to the expected format
+    formatted_paid_for = []
+    
+    for participant_id, shares in paid_for:
+        formatted_paid_for.append({
+            "participant": participant_id,
+            "shares": shares
+        })
+
+    # Create the expense form values
+    expense_form_values = {
+        "expenseDate": expense_date,
+        "title": title,
+        "category": category,
+        "amount": amount,
+        "paidBy": paid_by,
+        "paidFor": formatted_paid_for,
+        "splitMode": split_mode.value,
+        "saveDefaultSplittingOptions": False,
+        "isReimbursement": False,
+        "documents": [],
+        "notes": notes
+    }
+
+    return {
+        "0": {
+            "json": {
+                "groupId": group_id,
+                "expenseFormValues": expense_form_values,
+                "participantId": "None"
+            },
+            "meta": {
+                "values": {
+                    "expenseFormValues.expenseDate": ["Date"]
+                }
+            }
+        }
+    }
 
 @dataclass
 class Spliit:
@@ -160,6 +216,7 @@ class Spliit:
         paid_by: str,
         paid_for: List[Tuple[str, int]],
         split_mode: SplitMode = SplitMode.EVENLY,
+        expense_date: str = "2025-02-11T14:10:49.423Z",
         notes: str = "",
         category: int = 0
     ) -> str:
@@ -170,9 +227,9 @@ class Spliit:
             title: Title of the expense
             amount: Amount in cents (e.g., 1350 for $13.50)
             paid_by: ID of the participant who paid
-            paid_for: Either a list of participant IDs for even split,
-                     or a list of (participant_id, shares) tuples for custom split
+            paid_for: List of (participant_id, shares) tuples
             split_mode: How to split the expense (EVENLY, BY_SHARES, BY_PERCENTAGE, BY_AMOUNT)
+            expense_date: ISO format date string (e.g., "2025-02-11T14:10:49.423Z")
             notes: Optional notes for the expense
             category: Expense category ID
         """
@@ -185,6 +242,7 @@ class Spliit:
             paid_by,
             paid_for,
             split_mode,
+            expense_date,
             notes,
             category
         )

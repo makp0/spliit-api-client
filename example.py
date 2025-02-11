@@ -11,7 +11,7 @@ from spliit.client import Spliit
 GROUP_ID = "nldjPQDNgMJaiwigAr4HE"
 
 # Initialize the client
-client = Spliit(group_id=GROUP_ID)
+client = Spliit(group_id=GROUP_ID, server_url="https://spliit.app")
 
 # Get group details
 group = client.get_group()

@@ -173,3 +173,5 @@ cython_debug/
 spliit/
 
 .DS_Store
+
+postgres-data/

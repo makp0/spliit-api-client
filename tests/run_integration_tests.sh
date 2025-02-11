@@ -15,7 +15,7 @@ pip install -e ".[test]"
 
 # Start the containers in the background
 echo "Starting Docker containers..."
-cd "$PROJECT_ROOT/spliit"
+cd "$PROJECT_ROOT/tests/docker"
 docker compose down -v
 docker compose up -d --wait
 
@@ -29,7 +29,7 @@ pytest tests/test_integration.py -v
 
 # Cleanup
 echo "Cleaning up..."
-cd "$PROJECT_ROOT/spliit"
+cd "$PROJECT_ROOT/tests/docker"
 docker compose down -v
 
 # Deactivate virtual environment
