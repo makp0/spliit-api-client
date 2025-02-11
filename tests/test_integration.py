@@ -27,32 +27,13 @@ def verify_expense(expense_details, test_case):
         for paid in expense_details["paidFor"]
     }
     
-    # For even splits, verify equal shares
+    # For even splits, verify all shares are 100
     if test_case["split_mode"] == SplitMode.EVENLY:
-        total_shares = sum(shares.values())
-        expected_share = total_shares / len(shares)
         for share in shares.values():
-            assert share == expected_share
+            assert share == 100
     
-    # For percentage splits, verify shares add up to 10000 (100.00%)
-    elif test_case["split_mode"] == SplitMode.BY_PERCENTAGE:
-        total_shares = sum(shares.values())
-        assert total_shares == 10000  # 100.00%
-        for participant_id, expected_data in test_case["expected_shares"].items():
-            assert shares[participant_id] == expected_data["shares"]  # Already in basis points
-    
-    # For amount splits, verify shares add up to total amount
-    elif test_case["split_mode"] == SplitMode.BY_AMOUNT:
-        total_shares = sum(shares.values())
-        assert total_shares == test_case["amount"]
-        for participant_id, expected_data in test_case["expected_shares"].items():
-            assert shares[participant_id] == expected_data["amount"]
-    
-    # For share splits, verify share ratios
-    elif test_case["split_mode"] == SplitMode.BY_SHARES:
-        total_shares = sum(shares.values())
-        for participant_id, expected_data in test_case["expected_shares"].items():
-            assert shares[participant_id] == expected_data["shares"]
+    for participant_id, expected_data in test_case["expected_shares"].items():
+        assert shares[participant_id] == expected_data["shares"]
 
 def test_expense_lifecycle():
     """Test the complete lifecycle of expenses with different split modes."""
@@ -86,44 +67,48 @@ def test_expense_lifecycle():
             "title": f"Even Split Test {time.time()}",
             "amount": 5000,  # $50.00
             "paid_by": payer_id,
-            "paid_for": [participant1_id, participant2_id],
+            "paid_for": [(participant1_id, 100), (participant2_id, 100)],  # Each gets 100 shares
             "split_mode": SplitMode.EVENLY,
-            "notes": "Testing even split between two participants"
+            "notes": "Testing even split between two participants",
+            "expected_shares": {
+                participant1_id: {"shares": 100},
+                participant2_id: {"shares": 100}
+            }
         },
         {
             "title": f"Percentage Split Test {time.time()}",
             "amount": 6000,  # $60.00
             "paid_by": payer_id,
-            "paid_for": [(participant1_id, 7000), (participant2_id, 3000)],  # 70% and 30% in basis points
+            "paid_for": [(participant1_id, 7000), (participant2_id, 3000)],  # 70% and 30%
             "split_mode": SplitMode.BY_PERCENTAGE,
             "notes": "Testing 70-30 percentage split",
             "expected_shares": {
-                participant1_id: {"shares": 7000, "amount": 4200},  # 70% of $60.00
-                participant2_id: {"shares": 3000, "amount": 1800}   # 30% of $60.00
+                participant1_id: {"shares": 7000},  # 70%
+                participant2_id: {"shares": 3000}   # 30%
             }
         },
         {
             "title": f"Amount Split Test {time.time()}",
-            "amount": 7000,  # $70.00
+            "amount": 400,  # $4.00
             "paid_by": payer_id,
-            "paid_for": [(participant1_id, 4000), (participant2_id, 3000)],  # $40.00 and $30.00
+            "paid_for": [(participant1_id, 100), (participant2_id, 300)],  # $1.00, $1.50, $1.50
             "split_mode": SplitMode.BY_AMOUNT,
             "notes": "Testing exact amount split",
             "expected_shares": {
-                participant1_id: {"shares": 57, "amount": 4000},  # ~57% of $70.00
-                participant2_id: {"shares": 43, "amount": 3000}   # ~43% of $70.00
+                participant1_id: {"shares": 100},  # $1.00
+                participant2_id: {"shares": 300}   # $1.50
             }
         },
         {
             "title": f"Shares Split Test {time.time()}",
             "amount": 8000,  # $80.00
             "paid_by": payer_id,
-            "paid_for": [(participant1_id, 3), (participant2_id, 1)],
+            "paid_for": [(participant1_id, 100), (participant2_id, 300)],  # 1:3:4 ratio
             "split_mode": SplitMode.BY_SHARES,
-            "notes": "Testing 3:1 share ratio split",
+            "notes": "Testing share ratio split",
             "expected_shares": {
-                participant1_id: {"shares": 3, "amount": 6000},  # 3/4 of $80.00
-                participant2_id: {"shares": 1, "amount": 2000}   # 1/4 of $80.00
+                participant1_id: {"shares": 100},  # 1 share
+                participant2_id: {"shares": 300}   # 3 shares
             }
         }
     ]

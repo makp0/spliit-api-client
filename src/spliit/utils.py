@@ -23,7 +23,7 @@ def format_expense_payload(
     title: str,
     amount: int,
     paid_by: str,
-    paid_for: List[Union[str, Tuple[str, Union[int, float]]]],
+    paid_for: List[Tuple[str, int]],
     split_mode: SplitMode,
     notes: str = "",
     category: int = 0,
@@ -32,47 +32,11 @@ def format_expense_payload(
     # Convert paid_for to the expected format based on split mode
     formatted_paid_for = []
     
-    if split_mode == SplitMode.EVENLY:
-        # For even splits, each participant gets 1 share
-        for participant in paid_for:
-            if isinstance(participant, tuple):
-                participant_id = participant[0]
-            else:
-                participant_id = participant
-            formatted_paid_for.append({
-                "participant": participant_id,
-                "shares": "1"
-            })
-    else:
-        # For other split modes, handle the (participant_id, value) tuples
-        total_shares = 0
-        for participant_data in paid_for:
-            if isinstance(participant_data, tuple):
-                participant_id, value = participant_data
-                if split_mode == SplitMode.BY_PERCENTAGE:
-                    # For percentage splits, convert basis points to percentage
-                    shares = str(int(value) // 100)  # Convert 7000 to 70
-                    total_shares += int(shares)
-                elif split_mode == SplitMode.BY_AMOUNT:
-                    # For amount splits, convert to basis points
-                    # Handle rounding to ensure total is exactly 10000
-                    if participant_data == paid_for[-1]:  # Last participant
-                        shares = str(10000 - total_shares)  # Use remaining points
-                    else:
-                        shares = str(round(value * 10000 / amount))  # Convert to basis points
-                    total_shares += int(shares)
-                else:  # SplitMode.BY_SHARES
-                    # For share splits, use the share value directly
-                    shares = str(value)
-            else:
-                participant_id = participant_data
-                shares = "1"  # Default to 1 share if no value provided
-                
-            formatted_paid_for.append({
-                "participant": participant_id,
-                "shares": shares
-            })
-        
+    for participant_id, shares in paid_for:
+        formatted_paid_for.append({
+            "participant": participant_id,
+            "shares": shares
+        })
 
     # Create the expense form values
     expense_form_values = {
@@ -94,7 +58,7 @@ def format_expense_payload(
             "json": {
                 "groupId": group_id,
                 "expenseFormValues": expense_form_values,
-                "participantId": paid_by
+                "participantId": "None"
             },
             "meta": {
                 "values": {

@@ -158,7 +158,7 @@ class Spliit:
         title: str,
         amount: int,
         paid_by: str,
-        paid_for: List[Union[str, Tuple[str, Union[int, float]]]],
+        paid_for: List[Tuple[str, int]],
         split_mode: SplitMode = SplitMode.EVENLY,
         notes: str = "",
         category: int = 0
