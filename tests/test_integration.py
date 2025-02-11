@@ -7,7 +7,7 @@ import json
 # Add the src directory to Python path
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-from spliit.client import Spliit
+from spliit.client import Spliit, SplitMode
 
 # Test group ID - you might want to use a different one for testing
 TEST_GROUP_ID = "nldjPQDNgMJaiwigAr4HE"
@@ -22,8 +22,6 @@ def test_expense_lifecycle(client):
     # Get initial state
     group = client.get_group()
     participants = client.get_participants()
-    initial_expenses = client.get_expenses()
-    initial_count = len(initial_expenses)
     
     # Setup test data
     test_title = f"Test Expense {time.time()}"
@@ -35,43 +33,27 @@ def test_expense_lifecycle(client):
     
     # Create paid_for list with even split between first two participants
     paid_for = [
-        (participants[participant_names[0]], 50),  # First participant pays 50 shares
-        (participants[participant_names[1]], 50),  # Second participant pays 50 shares
+        participants[participant_names[0]],
+        participants[participant_names[1]],
     ]
     
-    print(f"\nRunning integration test:")
-    print(f"- Group: {group['name']}")
-    print(f"- Currency: {group['currency']}")
-    print(f"- Adding expense: {test_title}")
-    print(f"- Paid by: {payer}")
-    print(f"- Split evenly between: {participant_names[0]} and {participant_names[1]}")
-    print(f"- Notes: {test_notes}")
-    
     # Add the expense
-    new_expense = client.add_expense(
+    new_expense_response = client.add_expense(
         title=test_title,
         paid_by=payer_id,
         paid_for=paid_for,
         amount=test_amount,
         notes=test_notes
     )
-    assert new_expense is not None
     
-    # Verify the expense was added
-    expenses = client.get_expenses()
-    assert len(expenses) == initial_count + 1
+    # Extract expense ID from response
+    expense_id = json.loads(new_expense_response)[0]["result"]["data"]["json"]["expenseId"]
     
-    # Find our test expense
-    test_expense = next(
-        (exp for exp in expenses if exp["title"] == test_title),
-        None
-    )
-    assert test_expense is not None
+    # Wait for the expense to be processed
+    time.sleep(1)
     
     # Get detailed expense info
-    expense_details = client.get_expense(test_expense["id"])
-    print("\nExpense details:")
-    print(json.dumps(expense_details, indent=2))
+    expense_details = client.get_expense(expense_id)
     
     # Verify expense details
     assert expense_details["title"] == test_title
@@ -82,21 +64,17 @@ def test_expense_lifecycle(client):
     # Create a map of participant IDs to names for verification
     participant_map = {id: name for name, id in participants.items()}
     
-    # Verify shares
+    # Verify shares are equal for even split
     shares = {participant_map[paid["participantId"]]: paid["shares"] for paid in expense_details["paidFor"]}
-    assert shares[participant_names[0]] == 50
-    assert shares[participant_names[1]] == 50
-    
-    print("- Expense verified successfully")
-    print(f"- Notes verified: {expense_details['notes']}")
+    total_shares = sum(shares.values())
+    expected_share = total_shares / len(shares)
+    for share in shares.values():
+        assert share == expected_share
     
     # Remove the test expense
-    removed = client.remove_expense(test_expense["id"])
+    removed = client.remove_expense(expense_id)
     assert removed is not None
     
     # Verify the expense was removed
-    final_expenses = client.get_expenses()
-    assert len(final_expenses) == initial_count
-    assert not any(exp["title"] == test_title for exp in final_expenses)
-    
-    print("- Test expense removed successfully") 
+    expenses = client.get_expenses()
+    assert not any(exp["id"] == expense_id for exp in expenses) 

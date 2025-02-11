@@ -14,6 +14,7 @@ pip install spliit-api-client
 
 ```python
 from spliit.client import Spliit
+from spliit.utils import SplitMode
 
 # Initialize the client with your group ID
 client = Spliit(group_id="your_group_id")
@@ -26,16 +27,40 @@ print(f"Group: {group['name']}")
 participants = client.get_participants()
 print("Participants:", participants)
 
-# Add an expense
+# Add an expense with even split (default)
 expense = client.add_expense(
     title="Dinner",
     paid_by="participant_id",  # ID of the person who paid
     paid_for=[
-        ("participant1_id", 50),  # Each participant gets 50 shares
-        ("participant2_id", 50),
+        ("participant1_id", 1),  # Share values are ignored in EVENLY mode
+        ("participant2_id", 1),
     ],
-    amount=5000,  # Amount in cents (50.00)
+    amount=5000,  # $50.00 in cents
     notes="Great dinner!"  # Optional notes
+)
+
+# Add an expense with percentage split
+expense = client.add_expense(
+    title="Groceries",
+    paid_by="participant_id",
+    paid_for=[
+        ("participant1_id", 70),  # 70% of the total
+        ("participant2_id", 30),  # 30% of the total
+    ],
+    amount=3000,  # $30.00 in cents
+    split_mode=SplitMode.BY_PERCENTAGE
+)
+
+# Add an expense with exact amounts
+expense = client.add_expense(
+    title="Movie tickets",
+    paid_by="participant_id",
+    paid_for=[
+        ("participant1_id", 1500),  # $15.00 in cents
+        ("participant2_id", 1500),  # $15.00 in cents
+    ],
+    amount=3000,  # $30.00 in cents
+    split_mode=SplitMode.BY_AMOUNT
 )
 
 # Get all expenses
@@ -54,7 +79,11 @@ client.remove_expense("expense_id")
 ## Features
 
 - Get group details and participants
-- Add expenses with even or custom splits
+- Add expenses with multiple split modes:
+  - Even split
+  - Split by percentage
+  - Split by exact amounts
+  - Split by shares
 - Add notes to expenses
 - Get expense details
 - Remove expenses
